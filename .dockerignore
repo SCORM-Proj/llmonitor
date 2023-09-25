@@ -1,0 +1,17 @@
+.git
+.results
+scripts
+*Dockerfile*
+node_modules
+.env
+.env.local
+.env.example
+.dockerignore
+npm-debug.log
+README.md
+.next
+.jest_cache
+.docker-compose
+.vscode
+.terraform
+.husky
