@@ -1,6 +1,11 @@
 import CopyText from "@/components/Blocks/CopyText"
 import UserAvatar from "@/components/Blocks/UserAvatar"
-import { useApps, useCurrentApp, useProfile } from "@/utils/supabaseHooks"
+import {
+  useApps,
+  useCurrentApp,
+  useProfile,
+  useTeam,
+} from "@/utils/supabaseHooks"
 
 import {
   Alert,
@@ -20,6 +25,7 @@ import {
   Title,
 } from "@mantine/core"
 import { modals } from "@mantine/modals"
+import { useSupabaseClient } from "@supabase/auth-helpers-react"
 import {
   IconBrandOpenai,
   IconDownload,
@@ -29,18 +35,65 @@ import {
 import { NextSeo } from "next-seo"
 import Router from "next/router"
 import { useState } from "react"
+import { Database } from "../utils/supaTypes"
+
+function Invite() {
+  const { team } = useTeam()
+  const { profile } = useProfile()
+
+  if (profile?.team_owner) {
+    return null
+  }
+
+  if (team?.plan === "pro") {
+    return (
+      <Text>
+        Invite link:{" "}
+        <CopyText
+          value={`https://app.llmonitor.com/join?team=${profile?.id}`}
+        />
+      </Text>
+    )
+  }
+
+  return (
+    <Button
+      variant="light"
+      onClick={() =>
+        modals.openContextModal({
+          modal: "upgrade",
+          size: 800,
+          innerProps: {},
+        })
+      }
+      sx={{ float: "right" }}
+      leftIcon={<IconUserPlus size={16} />}
+    >
+      Invite
+    </Button>
+  )
+}
 
 export default function AppAnalytics() {
   const { app, setAppId } = useCurrentApp()
   const [focused, setFocused] = useState(false)
 
+  const supabaseClient = useSupabaseClient<Database>()
+
   const { profile } = useProfile()
+
+  const { team } = useTeam()
 
   const { drop, update } = useApps()
 
   const applyRename = (e) => {
     setFocused(false)
     update({ id: app.id, name: e.target.value })
+  }
+
+  const inviteHandler = () => {
+    if (team.plan === "pro") {
+    }
   }
 
   return (
@@ -80,21 +133,7 @@ export default function AppAnalytics() {
           <Card withBorder p={0}>
             <Group position="apart" align="center" p="lg">
               <Title order={3}>Team</Title>
-              <Button
-                variant="light"
-                onClick={() =>
-                  modals.openContextModal({
-                    modal: "upgrade",
-                    size: 800,
-                    innerProps: {},
-                  })
-                }
-                sx={{ float: "right" }}
-                leftIcon={<IconUserPlus size={16} />}
-                disabled
-              >
-                Invite
-              </Button>
+              <Invite />
             </Group>
 
             <Table striped verticalSpacing="lg" horizontalSpacing="lg">
@@ -106,18 +145,22 @@ export default function AppAnalytics() {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>
-                    <Group>
-                      <UserAvatar profile={profile} />
-                      <Text>{profile?.name}</Text>
+                {team?.users?.map((user, i) => (
+                  <tr key={i}>
+                    <td>
+                      <Group>
+                        <UserAvatar profile={user} />
+                        <Text>{user?.name}</Text>
 
-                      <Badge color="blue">You</Badge>
-                    </Group>
-                  </td>
-                  <td>{profile?.email}</td>
-                  <td>Owner</td>
-                </tr>
+                        {user.id === profile.id ? (
+                          <Badge color="blue">You</Badge>
+                        ) : null}
+                      </Group>
+                    </td>
+                    <td>{user?.email}</td>
+                    <td>{user?.role}</td>
+                  </tr>
+                ))}
               </tbody>
             </Table>
           </Card>
@@ -168,33 +211,35 @@ export default function AppAnalytics() {
               </Group>
             </Stack>
           </Card>
-          <Card withBorder p="lg" sx={{ overflow: "visible" }}>
-            <Title mb="md" order={4}>
-              Danger Zone
-            </Title>
+          {!profile?.team_owner && (
+            <Card withBorder p="lg" sx={{ overflow: "visible" }}>
+              <Title mb="md" order={4}>
+                Danger Zone
+              </Title>
 
-            <Popover width={200} position="bottom" withArrow shadow="md">
-              <Popover.Target>
-                <Button color="red">Delete App</Button>
-              </Popover.Target>
-              <Popover.Dropdown>
-                <Text mb="md">
-                  Are you sure you want to delete this app? This action is
-                  irreversible and it will delete all associated data.
-                </Text>
-                <Button
-                  color="red"
-                  onClick={() => {
-                    drop({ id: app.id })
-                    setAppId(null)
-                    Router.push("/")
-                  }}
-                >
-                  Delete
-                </Button>
-              </Popover.Dropdown>
-            </Popover>
-          </Card>
+              <Popover width={200} position="bottom" withArrow shadow="md">
+                <Popover.Target>
+                  <Button color="red">Delete App</Button>
+                </Popover.Target>
+                <Popover.Dropdown>
+                  <Text mb="md">
+                    Are you sure you want to delete this app? This action is
+                    irreversible and it will delete all associated data.
+                  </Text>
+                  <Button
+                    color="red"
+                    onClick={() => {
+                      drop({ id: app.id })
+                      setAppId(null)
+                      Router.push("/")
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </Popover.Dropdown>
+              </Popover>
+            </Card>
+          )}
         </Stack>
       </Stack>
     </Container>

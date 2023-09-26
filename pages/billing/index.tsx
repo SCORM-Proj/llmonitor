@@ -1,5 +1,5 @@
 import { formatLargeNumber } from "@/utils/format"
-import { useProfile } from "@/utils/supabaseHooks"
+import { useProfile, useTeam } from "@/utils/supabaseHooks"
 import {
   Badge,
   Stack,
@@ -19,13 +19,13 @@ import { NextSeo } from "next-seo"
 import { useEffect, useState } from "react"
 
 export default function Billing() {
-  const { profile, loading } = useProfile()
+  const { team, loading } = useTeam()
   const supabaseClient = useSupabaseClient()
 
   const [usage, setUsage] = useState(0)
 
   useEffect(() => {
-    if (profile) {
+    if (team) {
       // last 30 days of runs
       supabaseClient
         .from("run")
@@ -39,11 +39,13 @@ export default function Billing() {
           setUsage(count)
         })
     }
-  }, [profile])
+  }, [team])
 
   if (loading) return <Loader />
 
   const percent = (usage / 30000) * 100
+
+  const seatAllowance = team?.plan === "free" ? 1 : 5
 
   return (
     <Container>
@@ -52,10 +54,10 @@ export default function Billing() {
         <Title>Billing</Title>
 
         <Text size="lg">
-          You are currently on the <Badge>{profile?.plan}</Badge> plan.
+          You are currently on the <Badge>{team?.plan}</Badge> plan.
         </Text>
 
-        {profile?.plan === "free" && (
+        {team?.plan === "free" && (
           <>
             {percent > 99 && (
               <Alert
@@ -106,9 +108,14 @@ export default function Billing() {
               Seat Allowance
             </Text>
             <Text fz="lg" fw={500}>
-              1 / 1 users
+              1 / {seatAllowance} users
             </Text>
-            <Progress value={100} size="lg" color="orange" radius="xl" />
+            <Progress
+              value={(team?.users?.length / seatAllowance) * 100}
+              size="lg"
+              color="orange"
+              radius="xl"
+            />
           </Stack>
         </Card>
       </Stack>
